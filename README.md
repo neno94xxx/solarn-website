@@ -1,5 +1,7 @@
 # Solarni portal
 
+> Supabase SQL datoteke `supabase-*.txt` namjerno su lokalne i isključene iz Gita. Sačuvajte njihove kopije zasebno: potrebne su za postavljanje/nadogradnju baze i `tests/database.test.mjs`. Nakon novog kloniranja repozitorija vratite ih u korijen projekta prije pokretanja `npm test`.
+
 Astro portal sa solarnim kalkulatorom i zaštićenim uredništvom. Javne informativne stranice ostaju statičke; naslovnica, arhiva i članci iz Supabasea renderiraju se na poslužitelju. Objave su odmah dostupne, a njihov tekst nalazi se u HTML-u za tražilice.
 
 ## Pokretanje
@@ -42,7 +44,7 @@ Početni vodiči nalaze se u `src/data/articles.ts` i ostaju dio portala; ovo ur
 - `solar_admins`: dopušteni Supabase Auth korisnici.
 - Storage `solar-articles`: javne optimizirane WebP slike; fotografije su javno dostupne putem URL-a i za nacrte. Za povjerljive fotografije treba zaseban privatni bucket.
 
-Pri prijenosu se provjerava stvarni format, najviše 10 MB i 30 megapiksela. Fotografije se orijentiraju, smanjuju do 1600 × 1600 px, uklanjaju se metapodaci i stvaraju do tri WebP veličine. Ne prenose se izvorne velike datoteke. Zamijenjene ili uklonjene fotografije ostaju u Storageu kako se postojeći sadržaj ne bi slučajno obrisao.
+Pri prijenosu se provjerava stvarni format, najviše 1 MB i 30 megapiksela. Fotografije se orijentiraju, smanjuju do 1600 × 1600 px, uklanjaju se metapodaci i stvaraju do tri WebP veličine, svaka do 100 KB. Izvorne velike datoteke ne spremaju se. Zamijenjene ili uklonjene fotografije ostaju povezane s člankom do njegova brisanja.
 
 Prijavu provjerava Supabase Auth. Pravo uređivanja zasebno se provjerava u `solar_admins`, na poslužitelju i kroz Postgres RLS. Klijenti koriste javni ključ; nema zaobilaženja RLS-a service-role ključem. Sesija je u HttpOnly, SameSite kolačićima, sa Secure zastavicom na HTTPS-u. Sve promjene zahtijevaju isti origin; privatni odgovori imaju `no-store`. Admin nije u sitemapu i označen je `noindex`.
 
@@ -78,6 +80,16 @@ npm run test:site
 `npm test` provjerava kalkulator, validaciju članka te izvršava stvarni SQL u lokalnom PostgreSQL-u (PGlite) s testnim Supabase auth/storage shemama. Provjerava RLS za gosta, običnog korisnika i administratora. `test:admin` testira HTTP tok prijave, ovlasti, spremanja, objave i prijenosa uz lokalno simuliran Supabase API, bez pravih računa ili mrežnih upisa. `test:site` zahtijeva pokrenut lokalni poslužitelj; provjerava javne rute, SEO i zaštitu admina. Ti testovi ne zamjenjuju završnu provjeru na vašem novom Supabase projektu.
 
 Opcionalna provjera izgleda i interakcija u Chromeu: `npm run test:browser` uz pokrenuti portal i instaliran Chrome. Ako sandbox blokira pokretanje Chromea, pokrenite je u vlastitom terminalu.
+
+## Brisanje članaka i slike do 100 KB
+
+Za već postavljenu bazu pokrenite **supabase-update-delete-articles.txt** u Supabase SQL Editoru. Novi projekti trebaju samo aktualni `supabase-setup.txt`, koji uključuje istu nadogradnju. SQL ne briše postojeće članke ni slike. Bez nadogradnje brisanje prikazuje uputu, a članak ostaje sačuvan.
+
+U uredniku spremljenog članka kliknite **Obriši članak i slike** i potvrdite trajno brisanje. Članak nestaje iz baze, naslovnice, arhive i sitemapa. Sve varijante naslovne slike i slika iz tijela uklanjaju se putem Storage API-ja. Od ove nadogradnje pamte se i slike zamijenjene ili uklonjene pri kasnijem spremanju, kako bi se obrisale zajedno s člankom. Slike pridružene drugim člancima (uključujući nacrte) ne brišu se. SQL provjerava verziju članka prije brisanja da se ne izgube novije izmjene.
+
+Ako Storage privremeno ne radi, članak se ukloni s portala, ali putanje slika ostaju u trajnom redu za čišćenje. Administracija prikazuje nepotpuno čišćenje. Kliknite **Dovrši čišćenje slika** na popisu članaka za ponovni pokušaj; red se provjerava i pri sljedećem brisanju. Nema automatskog pozadinskog rasporeda.
+
+Svaka nova optimizirana WebP datoteka smije imati najviše **100.000 bajtova (100 KB)**. Izvornik može imati do 1 MB; poslužitelj prilagođava kvalitetu i po potrebi rezoluciju. I Storage bucket nakon SQL nadogradnje provodi isti limit. Postojeće slike nisu retroaktivno rekomprimirane. Slike prenesene ali nikada spremljene uz članak, kao i slike uklonjene prije ove nadogradnje, nemaju pouzdanu vezu s člankom i ne brišu se automatski.
 
 ## Ostalo
 

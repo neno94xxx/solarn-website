@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import sharp from 'sharp';
+import { optimizeImage } from '../../../lib/server/image-optimization.mjs';
 import { randomUUID } from 'node:crypto';
 import { adminSession, supabaseConfig } from '../../../lib/server/supabase';
 import { json, sameOrigin } from '../../../lib/server/http';
@@ -22,19 +22,19 @@ export const POST: APIRoute = async context => {
   try{
     const session=await adminSession(context);
     if(!session.admin||!session.client)return json({error:'Prijava je istekla. Ponovno se prijavite prije prijenosa slike.'},401);
-    if(Number(context.request.headers.get('content-length')||0)>11*1024*1024)return json({error:'Slika smije imati najviše 10 MB.'},413);
+    if(Number(context.request.headers.get('content-length')||0)>2*1024*1024)return json({error:'Slika smije imati najviše 1 MB.'},413);
     const form=await context.request.formData();const file=form.get('image');
-    if(!(file instanceof File)||!file.size||file.size>10*1024*1024)return json({error:'Odaberite sliku do 10 MB.'},400);
+    if(!(file instanceof File)||!file.size||file.size>1024*1024)return json({error:'Odaberite sliku do 1 MB.'},400);
     const input=Buffer.from(await file.arrayBuffer());
-    let base;
-    try{const decoded=sharp(input,{limitInputPixels:30000000,animated:false});const meta=await decoded.metadata();if(!['jpeg','png','webp','avif','heif'].includes(meta.format||'')||(meta.pages||1)>1)throw new Error();base=await decoded.rotate().resize({width:1600,height:1600,fit:'inside',withoutEnlargement:true}).webp({quality:82}).toBuffer({resolveWithObject:true});}
+    let outputs;
+    try{outputs=await optimizeImage(input);}
     catch{return json({error:'Slika nije podržana ili je prevelike rezolucije. Koristite JPG, PNG, WebP ili AVIF do 30 megapiksela.'},400);}
     const id=randomUUID();const variants:{path:string;width:number;height:number}[]=[];
-    const widths=[...new Set([Math.min(400,base.info.width),Math.min(800,base.info.width),base.info.width])];
     const uploaded:string[]=[];
     try{
-      for(const width of widths){const output=await sharp(base.data).resize({width,withoutEnlargement:true}).webp({quality:80}).toBuffer({resolveWithObject:true});const path=`${session.user!.id}/${id}/${width}.webp`;const result=await session.client.storage.from('solar-articles').upload(path,output.data,{contentType:'image/webp',cacheControl:'31536000',upsert:false});if(result.error)throw new Error();uploaded.push(path);variants.push({path,width:output.info.width,height:output.info.height});}
-      const media={id,owner_id:session.user!.id,variants,width:base.info.width,height:base.info.height,original_name:file.name.slice(0,255)};
+      for(const output of outputs){const path=`${session.user!.id}/${id}/${output.info.width}.webp`;const result=await session.client.storage.from('solar-articles').upload(path,output.data,{contentType:'image/webp',cacheControl:'31536000',upsert:false});if(result.error)throw new Error();uploaded.push(path);variants.push({path,width:output.info.width,height:output.info.height});}
+      const largest=outputs.at(-1)!;
+      const media={id,owner_id:session.user!.id,variants,width:largest.info.width,height:largest.info.height,original_name:file.name.slice(0,255)};
       const result=await session.client.from('solar_media').insert(media);
       if(result.error)throw new Error();
       return json({media:{...media,variants:variants.map(variant=>({...variant,url:`${supabaseConfig()!.url}/storage/v1/object/public/solar-articles/${variant.path}`}))}},201);

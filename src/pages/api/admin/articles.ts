@@ -3,6 +3,7 @@ import { adminSession } from '../../../lib/server/supabase';
 import { json, readJson, sameOrigin } from '../../../lib/server/http';
 import { validateArticle, referencedMedia, UUID } from '../../../lib/article-validation.mjs';
 import { articles as originals } from '../../../data/articles';
+import { cleanupArticleImages } from '../../../lib/server/storage-cleanup';
 export const prerender=false;
 export const GET: APIRoute = async context => {
   try {
@@ -47,3 +48,26 @@ const save: APIRoute = async context => {
 };
 export const POST=save;
 export const PATCH=save;
+
+export const DELETE: APIRoute = async context => {
+  if(!sameOrigin(context.request))return json({error:'Nedopušten izvor zahtjeva.'},403);
+  let deleted=false;
+  try {
+    const session=await adminSession(context);
+    if(!session.admin||!session.client)return json({error:'Potrebna je administratorska prijava.'},401);
+    let payload;
+    try{payload=await readJson(context.request);}catch{return json({error:'Neispravan zahtjev.'},400);}
+    if(payload.cleanupOnly!==true){
+      if(!UUID.test(payload.id||'')||typeof payload.updated_at!=='string'||!Number.isFinite(Date.parse(payload.updated_at)))return json({error:'Nedostaje spremljena verzija članka.'},400);
+      const result=await session.client.rpc('solar_delete_article',{p_id:payload.id,p_updated_at:payload.updated_at});
+      if(result.error)return json({error:result.error.code==='40001'?'Članak je izmijenjen. Osvježite stranicu prije brisanja.':'Brisanje nije dostupno. Pokrenite supabase-update-delete-articles.txt u Supabase SQL Editoru pa pokušajte ponovno.'},result.error.code==='40001'?409:503);
+      // An already removed ID is successful too: this makes network retries safe.
+      deleted=true;
+    }
+    const complete=await cleanupArticleImages(session.client);
+    return json({deleted,cleanupPending:!complete});
+  }catch{
+    if(deleted)return json({deleted:true,cleanupPending:true});
+    return json({error:'Čišćenje slika nije dovršeno. Provjerite SQL nadogradnju i pokušajte ponovno.'},503);
+  }
+};

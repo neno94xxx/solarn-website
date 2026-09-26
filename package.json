@@ -8,7 +8,7 @@
     "build": "astro check && astro build",
     "preview": "node scripts/serve-app.mjs",
     "start": "node scripts/serve-app.mjs",
-    "test": "node --test --test-isolation=none tests/calculator.test.mjs tests/article-validation.test.mjs tests/database.test.mjs",
+    "test": "node --test --test-isolation=none tests/calculator.test.mjs tests/article-validation.test.mjs tests/database.test.mjs tests/image-optimization.test.mjs",
     "test:admin": "node --test --test-isolation=none tests/admin-integration.test.mjs",
     "build:portable": "node scripts/build-in-process.mjs",
     "test:browser": "node scripts/browser-check.mjs",

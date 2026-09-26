@@ -24,6 +24,9 @@ test('setup SQL: repeatable migration and real Postgres RLS protects articles an
       insert into auth.users values ('${admin}','ferdinand.nodilo@yahoo.com'),('${member}','member@example.test');`);
     const setup=await readFile(new URL('../supabase-setup.txt',import.meta.url),'utf8');
     await db.exec(setup);await db.exec(setup);
+    const migration=await readFile(new URL('../supabase-update-delete-articles.txt',import.meta.url),'utf8');
+    await db.exec(migration);await db.exec(migration);
+    assert.equal(Number((await db.query("select file_size_limit from storage.buckets where id='solar-articles'")).rows[0].file_size_limit),100000);
     async function role(name,id=''){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec(`set role ${name}`);}
     await role('authenticated',admin);
     assert.equal((await db.query('select public.is_solar_admin() as admin')).rows[0].admin,true);
@@ -38,9 +41,12 @@ test('setup SQL: repeatable migration and real Postgres RLS protects articles an
     assert.equal((await db.query('select id from public.solar_media')).rows.length,1);
     await assert.rejects(db.query("insert into public.solar_articles(title,slug,category) values ('Intruder','intruder','Vodiči')"));
     await assert.rejects(db.query('select * from public.solar_admins'));
+    await assert.rejects(db.query('select public.solar_delete_article($1,now())',[draft]));
+    await assert.rejects(db.query('select * from public.solar_storage_cleanup_queue'));
     await assert.rejects(db.query('insert into storage.objects(bucket_id,name) values ($1,$2)',['solar-articles','anon/image.webp']));
     await role('authenticated',member);
     assert.equal((await db.query('select * from public.solar_admins')).rows.length,0);
+    await assert.rejects(db.query('select public.solar_delete_article($1,now())',[draft]));
     assert.equal((await db.query('select title from public.solar_articles')).rows.length,1);
     await assert.rejects(db.query('insert into public.solar_admins(user_id) values ($1)',[member]));
     await assert.rejects(db.query("insert into public.solar_articles(title,slug,category) values ('Intruder','intruder','Vodiči')"));
@@ -53,5 +59,26 @@ test('setup SQL: repeatable migration and real Postgres RLS protects articles an
     await role('anon');
     assert.equal((await db.query('select * from public.solar_articles')).rows.length,0);
     assert.equal((await db.query('select * from public.solar_media')).rows.length,0);
+    await role('authenticated',admin);
+    // Shared cover/body images survive until the last attached article is deleted.
+    await db.query('update public.solar_articles set blocks=$1 where id=$2',[JSON.stringify([{id:media,type:'image',mediaId:media,alt:'Solarni paneli'}]),draft]);
+    const published=(await db.query("select * from public.solar_articles where slug='objavljeni-clanak'")).rows[0];
+    await assert.rejects(db.query('select public.solar_delete_article($1,$2)',[published.id,'2000-01-01T00:00:00Z']));
+    assert.equal((await db.query('select public.solar_delete_article($1,$2) as deleted',[published.id,published.updated_at])).rows[0].deleted,true);
+    assert.equal((await db.query('select * from public.solar_media')).rows.length,1);
+    assert.equal((await db.query('select * from public.solar_storage_cleanup_queue')).rows.length,0);
+    // Retain historical attachments, even after removing an image from the body.
+    await db.query('update public.solar_articles set blocks=$1 where id=$2',[blocks,draft]);
+    const last=(await db.query('select * from public.solar_articles where id=$1',[draft])).rows[0];
+    await db.query('select public.solar_delete_article($1,$2)',[draft,last.updated_at]);
+    assert.equal((await db.query('select * from public.solar_articles')).rows.length,0);
+    assert.equal((await db.query('select * from public.solar_media')).rows.length,0);
+    assert.equal((await db.query('select * from public.solar_storage_cleanup_queue')).rows.length,1);
+    // SQL leaves physical Storage removal to the authenticated API.
+    assert.equal((await db.query('select * from storage.objects')).rows.length,1);
+    assert.equal((await db.query('select public.solar_delete_article($1,$2) as deleted',[draft,last.updated_at])).rows[0].deleted,false);
+    await assert.rejects(db.query('insert into public.solar_articles(title,slug,category,blocks) values ($1,$2,$3,$4)',['Missing image','missing-image','Novosti',JSON.stringify([{id:media,type:'image',mediaId:media,alt:'Solarni paneli'}])]));
+    await db.query("delete from storage.objects where bucket_id='solar-articles'");
+    assert.equal((await db.query('select * from storage.objects')).rows.length,0);
   }finally{await db.close();}
 });

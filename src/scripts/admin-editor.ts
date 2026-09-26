@@ -60,7 +60,7 @@ function renderBlocks(focusId?:string){
   if(focusId)blocksContainer.querySelector<HTMLElement>(`[data-id="${focusId}"] input,[data-id="${focusId}"] textarea`)?.focus();
 }
 async function upload(file:File):Promise<MediaAsset>{
-  if(file.size>10*1024*1024)throw new Error(`${file.name}: najveća dopuštena veličina je 10 MB.`);
+  if(file.size>1024*1024)throw new Error(`${file.name}: najveća dopuštena veličina je 1 MB.`);
   const body=new FormData();body.append('image',file);const data=await api('/api/admin/media/',{method:'POST',body});media.set(data.media.id,data.media);return data.media;
 }
 title.addEventListener('input',()=>{if(!customSlug&&!slug.readOnly){slug.value=slugify(title.value);syncSlug();}markDirty();});
@@ -104,6 +104,7 @@ form.addEventListener('submit',async event=>{
   }catch(e){showError(e instanceof Error?e.message:'Spremanje nije uspjelo.');setBusy(false);renderBlocks();}
 });
 function updatePublication(){
+  document.querySelector<HTMLButtonElement>('#delete-article')!.hidden=!articleId;
   const badge=document.querySelector('#editor-badge')!;badge.className=`admin-badge ${published?'published':'draft'}`;badge.textContent=published?'Objavljeno':'Nacrt';
   document.querySelector('#publish-button')!.textContent=published?'Spremi promjene':'Objavi članak';
   const link=document.querySelector<HTMLAnchorElement>('#view-article')!;link.hidden=!published;link.href=`/clanci/${slug.value}/`;
@@ -122,4 +123,13 @@ async function initialize(){
   }catch(e){showError(e instanceof Error?e.message:'Članak nije učitan.');status.textContent='Osvježite stranicu i pokušajte ponovno.';}
 }
 window.addEventListener('beforeunload',event=>{if(dirty||busy)event.preventDefault();});
+document.querySelector('#delete-article')!.addEventListener('click',async()=>{
+  if(busy||!articleId)return;
+  if(!confirm(`Trajno obrisati članak „${title.value}” i sve pripadajuće slike? Slike koje koristi drugi članak ostaju sačuvane. Ovu radnju nije moguće poništiti.`))return;
+  error.hidden=true;setBusy(true,'Brišemo članak i slike…');
+  try{
+    const result=await api('/api/admin/articles/',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:articleId,updated_at:updatedAt})});
+    dirty=false;busy=false;location.assign(`/admin/?deleted=1${result.cleanupPending?'&cleanup=pending':''}`);
+  }catch(e){showError(e instanceof Error?e.message:'Brisanje nije uspjelo.');setBusy(false);renderBlocks();}
+});
 void initialize();

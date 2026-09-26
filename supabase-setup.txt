@@ -149,3 +149,93 @@ commit;
 select u.email, a.user_id as administrator from public.solar_admins a join auth.users u on u.id = a.user_id;
 -- Provjera: solar-articles treba biti public=true; RLS upise ogranicava na admine.
 select id, public, file_size_limit from storage.buckets where id = 'solar-articles';
+
+-- SOLARNI PORTAL: BRISANJE CLANAKA I SLIKE DO 100 KB
+-- U postojecem projektu pokrenite CIJELU datoteku u Supabase SQL Editoru.
+-- Sigurno je ponoviti. Ne brise postojece clanke ni slike.
+-- Postojece slike ne komprimira retroaktivno; nove datoteke imaju limit 100000 bajtova.
+begin;
+
+alter table public.solar_articles add column if not exists attached_media_ids uuid[] not null default '{}';
+
+-- Povijest spremljenih priloga omogucuje brisanje i zamijenjenih slika.
+create or replace function public.solar_track_article_media()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare ids uuid[];
+begin
+  lock table public.solar_media in share row exclusive mode;
+  select coalesce(array_agg(distinct id), '{}'::uuid[]) into ids from (
+    select new.cover_image_id as id
+    union select (b->>'mediaId')::uuid from jsonb_array_elements(new.blocks) b where b->>'type'='image'
+  ) refs where id is not null;
+  if exists(select 1 from unnest(ids) r(id) where not exists(select 1 from public.solar_media m where m.id=r.id)) then
+    raise exception 'Slika vise ne postoji. Ponovno je prenesite.' using errcode='23503';
+  end if;
+  select coalesce(array_agg(distinct id), '{}'::uuid[]) into new.attached_media_ids
+  from unnest(ids || case when tg_op='UPDATE' then old.attached_media_ids else '{}'::uuid[] end) r(id);
+  return new;
+end; $$;
+revoke all on function public.solar_track_article_media() from public;
+drop trigger if exists solar_articles_track_media on public.solar_articles;
+create trigger solar_articles_track_media before insert or update on public.solar_articles
+for each row execute function public.solar_track_article_media();
+-- Backfill without changing publication/edit timestamps.
+alter table public.solar_articles disable trigger solar_articles_touch;
+update public.solar_articles set attached_media_ids=attached_media_ids;
+alter table public.solar_articles enable trigger solar_articles_touch;
+
+create table if not exists public.solar_storage_cleanup_queue (
+  path text primary key,
+  article_id uuid not null,
+  created_at timestamptz not null default now()
+);
+alter table public.solar_storage_cleanup_queue enable row level security;
+revoke all on public.solar_storage_cleanup_queue from anon, authenticated;
+grant select,delete on public.solar_storage_cleanup_queue to authenticated;
+drop policy if exists solar_cleanup_admin on public.solar_storage_cleanup_queue;
+create policy solar_cleanup_admin on public.solar_storage_cleanup_queue for all to authenticated
+using ((select public.is_solar_admin())) with check ((select public.is_solar_admin()));
+
+-- Database changes and durable cleanup jobs are committed together.
+-- Actual Storage files MUST be removed by the Storage API, not SQL.
+create or replace function public.solar_delete_article(p_id uuid,p_updated_at timestamptz)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare target public.solar_articles%rowtype; asset public.solar_media%rowtype; object_path text;
+begin
+  if not public.is_solar_admin() then raise exception 'Administrator required' using errcode='42501'; end if;
+  lock table public.solar_articles in share row exclusive mode;
+  lock table public.solar_media in share row exclusive mode;
+  select * into target from public.solar_articles where id=p_id;
+  if not found then return false; end if;
+  if p_updated_at is null or target.updated_at<>p_updated_at then
+    raise exception 'Clanak je izmijenjen. Osvjezite stranicu prije brisanja.' using errcode='40001';
+  end if;
+  delete from public.solar_articles where id=p_id;
+  for asset in select * from public.solar_media m where m.id=any(target.attached_media_ids)
+    and not exists(select 1 from public.solar_articles a where m.id=any(a.attached_media_ids))
+  loop
+    for object_path in select v->>'path' from jsonb_array_elements(asset.variants) v loop
+      if object_path not like asset.owner_id::text || '/' || asset.id::text || '/%' or object_path like '%..%' then
+        raise exception 'Neispravna putanja slike';
+      end if;
+      insert into public.solar_storage_cleanup_queue(path,article_id) values(object_path,p_id) on conflict do nothing;
+    end loop;
+    delete from public.solar_media where id=asset.id;
+  end loop;
+  return true;
+end; $$;
+revoke all on function public.solar_delete_article(uuid,timestamptz) from public;
+grant execute on function public.solar_delete_article(uuid,timestamptz) to authenticated;
+
+-- Any administrator may complete queued cleanup, including another editor's uploads.
+drop policy if exists solar_storage_cleanup on storage.objects;
+create policy solar_storage_cleanup on storage.objects for delete to authenticated using (
+  bucket_id='solar-articles' and (select public.is_solar_admin()) and (
+    exists(select 1 from public.solar_storage_cleanup_queue q where q.path=name)
+    or ((storage.foldername(name))[1]=(select auth.uid())::text and not exists(
+      select 1 from public.solar_media m where m.variants @> jsonb_build_array(jsonb_build_object('path',name))
+    ))
+  )
+);
+update storage.buckets set file_size_limit=100000 where id='solar-articles';
+commit;

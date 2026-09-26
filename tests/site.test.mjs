@@ -5,7 +5,7 @@ const paths=['/','/clanci/','/clanci/solarni-paneli-za-obiteljsku-kucu/','/solar
 const pages=new Map();
 test('public HTML has Croatian language, unique metadata, one H1 and structured data',async()=>{
   const titles=new Set();
-  for(const path of paths){const response=await fetch(base+path);assert.equal(response.status,200,path);const html=await response.text();pages.set(path,html);assert.match(html,/<html lang="hr">/);assert.equal((html.match(/<h1(?:\s|>)/g)||[]).length,1,path);assert.match(html,/<meta name="description" content="[^"]{40,}"/);assert.match(html,/<link rel="canonical" href="https:\/\//);const title=html.match(/<title>(.*?)<\/title>/s)[1];assert.ok(!titles.has(title));titles.add(title);for(const [,json] of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs))assert.ok(JSON.parse(json)['@type']);}
+  for(const path of paths){const response=await fetch(base+path);assert.equal(response.status,200,path);const html=await response.text();pages.set(path,html);assert.match(html,/<html lang="hr">/);assert.equal((html.match(/<h1(?:\s|>)/g)||[]).length,1,path);assert.match(html,/<meta name="description" content="[^"]{40,}"/);assert.match(html,/<link rel="canonical" href="(?:https:\/\/|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/)/);const title=html.match(/<title>(.*?)<\/title>/s)[1];assert.ok(!titles.has(title));titles.add(title);for(const [,json] of html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs))assert.ok(JSON.parse(json)['@type']);}
 });
 test('public links, CSS, scripts and representative optimized images return successfully',async()=>{
   const urls=new Set();

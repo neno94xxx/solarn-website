@@ -10,6 +10,11 @@ dist/
 .env.*
 !.env.example
 
+# Local Supabase setup/update scripts and CLI state
+/supabase-*.txt
+/supabase/.temp/
+/supabase/.branches/
+
 # Tests and browser downloads
 .playwright/
 test-results/
