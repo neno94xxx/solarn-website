@@ -15,11 +15,17 @@
     "test:site": "node --test --test-isolation=none tests/site.test.mjs"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": "24.x"
+  },
+  "overrides": {
+    "@vercel/routing-utils": {
+      "path-to-regexp": "6.3.0"
+    }
   },
   "dependencies": {
     "@astrojs/node": "^11.1.6",
     "@astrojs/sitemap": "^3.7.0",
+    "@astrojs/vercel": "^11.0.11",
     "@fontsource-variable/public-sans": "^5.2.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",

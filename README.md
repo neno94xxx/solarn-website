@@ -1,5 +1,7 @@
 # Solarni portal
 
+Za objavu na Vercelu slijedite [VERCEL.md](VERCEL.md). Konfiguracija automatski bira Vercel adapter u oblaku i Node adapter lokalno. Posredna ovisnost `path-to-regexp` za Vercelov routing zakrpana je npm overrideom na kompatibilnu verziju 6.3.0.
+
 > Supabase SQL datoteke `supabase-*.txt` namjerno su lokalne i isključene iz Gita. Sačuvajte njihove kopije zasebno: potrebne su za postavljanje/nadogradnju baze i `tests/database.test.mjs`. Nakon novog kloniranja repozitorija vratite ih u korijen projekta prije pokretanja `npm test`.
 
 Astro portal sa solarnim kalkulatorom i zaštićenim uredništvom. Javne informativne stranice ostaju statičke; naslovnica, arhiva i članci iz Supabasea renderiraju se na poslužitelju. Objave su odmah dostupne, a njihov tekst nalazi se u HTML-u za tražilice.
