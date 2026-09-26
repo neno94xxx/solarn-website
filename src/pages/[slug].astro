@@ -1,0 +1,8 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import { pages } from '../data/pages';
+export function getStaticPaths(){return pages.map(page=>({params:{slug:page.slug},props:{page}}));}
+const {page}=Astro.props;
+---
+<Layout title={page.title} description={page.description}><div class="page-tint"><div class="container"><div class="breadcrumb"><a href="/">Naslovnica</a><Icon name="chevron" size={12}/><span>{page.slug==='solarna-energija'?'Solarna energija':page.slug==='o-portalu'?'O portalu':page.title}</span></div><div class="page-heading"><div class="eyebrow">{page.eyebrow}</div><h1>{page.title}</h1><p>{page.description}</p></div></div></div><div class="container content-section"><div class="prose-layout"><article class="prose">{page.sections.map(([heading,text])=><section><h2>{heading}</h2><p>{text}</p></section>)}{page.slug==='poticaji'&&<a class="button button-navy" href="https://www.fzoeu.hr/" target="_blank" rel="noopener noreferrer">Službena stranica FZOEU-a <Icon name="external" size={16}/></a>}{page.slug==='solarna-energija'&&<a href="/clanci/solarni-paneli-za-obiteljsku-kucu/" class="button button-navy">Vodič za obiteljsku kuću <Icon name="arrow" size={16}/></a>}</article><aside class="info-box"><Icon name="sun" size={33}/><h2>Što sunce može učiniti za vaš dom?</h2><p>Isprobajte besplatni kalkulator i napravite prvi korak prema vlastitoj energiji.</p><a class="button button-gold" href="/solarni-kalkulator/">Solarni kalkulator <Icon name="arrow" size={17}/></a></aside></div></div></Layout>

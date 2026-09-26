@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/Icon.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { publishedArticles, originalArticles } from '../../lib/server/articles';
+export const prerender=false;
+let articles=originalArticles;
+try {articles=await publishedArticles();} catch {Astro.response.headers.set('Cache-Control','no-store');}
+---
+<Layout title="Vodiči i članci o solarnim panelima" description="Praktični vodiči o solarnim panelima, pripremi za poticaje, odabiru snage elektrane i korištenju vlastite energije.">
+  <div class="page-tint"><div class="container"><div class="breadcrumb"><a href="/">Naslovnica</a><Icon name="chevron" size={12}/><span>Vodiči i članci</span></div><div class="page-heading"><div class="eyebrow">ZNANJE ZA DOBRE ODLUKE</div><h1>Vodiči i korisni savjeti</h1><p>Razumljive informacije za svaki korak prema vlastitoj solarnoj elektrani. Pronađite temu koja vas zanima.</p></div></div></div>
+  <section class="container content-section" aria-label="Članci"><div class="archive-tools"><div class="filter-buttons" role="group" aria-label="Filtrirajte članke po kategoriji">{['Sve teme','Vodiči','Poticaji','Savjeti','Novosti'].map((category,index)=><button class="filter-button" data-filter={index===0?'all':category} aria-pressed={index===0?'true':'false'}>{category}</button>)}</div><div class="archive-search"><label class="sr-only" for="article-search">Pretražite članke</label><input id="article-search" type="search" placeholder="Pretražite članke…"/><Icon name="search" size={18}/></div></div><p id="search-status" class="sr-only" role="status" aria-live="polite"></p><div class="archive-grid">{articles.map(article=><ArticleCard article={article}/>)}</div><div id="empty-state" class="empty-state" hidden><h2>Nema članaka za ovaj upit.</h2><p>Pokušajte s drugim pojmom ili odaberite sve teme.</p><button id="clear-search" class="button button-navy" style="margin-top:20px">Prikaži sve članke</button></div></section>
+  <script>
+    const search=document.querySelector<HTMLInputElement>('#article-search')!;
+    const buttons=document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+    let filter='all';
+    const normalize=(value:string)=>value.toLocaleLowerCase('hr').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d');
+    function update(){let count=0;document.querySelectorAll<HTMLElement>('.article-card').forEach(card=>{const visible=(filter==='all'||normalize(card.dataset.category||'')===normalize(filter))&&normalize(card.dataset.search||'').includes(normalize(search.value.trim()));card.hidden=!visible;if(visible)count++;});document.querySelector<HTMLElement>('#empty-state')!.hidden=count>0;document.querySelector('#search-status')!.textContent=`Broj pronađenih članaka: ${count}.`;const url=new URL(location.href);if(search.value.trim())url.searchParams.set('q',search.value.trim());else url.searchParams.delete('q');history.replaceState(null,'',url);}
+    buttons.forEach(button=>button.addEventListener('click',()=>{filter=button.dataset.filter!;buttons.forEach(item=>item.setAttribute('aria-pressed',String(item===button)));update();}));search.value=new URLSearchParams(location.search).get('q')||'';search.addEventListener('input',update);document.querySelector('#clear-search')?.addEventListener('click',()=>{search.value='';buttons[0].click();search.focus();});update();
+  </script>
+</Layout>

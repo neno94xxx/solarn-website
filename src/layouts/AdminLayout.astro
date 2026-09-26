@@ -1,0 +1,10 @@
+---
+import '@fontsource-variable/public-sans';
+import '../styles/global.css';
+import '../styles/admin.css';
+import Logo from '../components/Logo.astro';
+import Icon from '../components/Icon.astro';
+interface Props {title:string;login?:boolean;}
+const {title,login=false}=Astro.props;
+---
+<!doctype html><html lang="hr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="robots" content="noindex,nofollow"/><title>{title} | Administracija · Solarni portal</title><link rel="icon" href="/favicon.svg"/></head><body class="admin-body"><a class="skip-link" href="#admin-content">Preskoči na sadržaj</a><header class="admin-header"><Logo/><span class="admin-label">UREĐIVANJE SADRŽAJA</span><a href="/" class="admin-site-link">Pogledajte portal <Icon name="external" size={16}/></a></header>{!login&&<nav class="admin-nav" aria-label="Administracija"><a href="/admin/" aria-current={Astro.url.pathname==='/admin/'?'page':undefined}>Svi članci</a><a href="/admin/urednik/" aria-current={Astro.url.pathname==='/admin/urednik/'?'page':undefined}>Novi članak</a><span class="admin-user">{Astro.locals.adminEmail}</span><button type="button" id="admin-logout">Odjava <Icon name="arrow" size={15}/></button></nav>}<main id="admin-content" class:list={['admin-main',{'login-main':login}]}><slot/></main><footer class="admin-footer">Solarni portal · Administracija sadržaja</footer><script>document.querySelector('#admin-logout')?.addEventListener('click',async()=>{try{const response=await fetch('/api/admin/session/',{method:'DELETE'});if(response.ok)location.assign('/admin/prijava/');else alert('Odjava nije uspjela. Pokušajte ponovno.');}catch{alert('Provjerite vezu i pokušajte ponovno.');}});</script></body></html>

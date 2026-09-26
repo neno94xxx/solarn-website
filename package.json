@@ -1,0 +1,37 @@
+{
+  "name": "solarni-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "astro check && astro build",
+    "preview": "node scripts/serve-app.mjs",
+    "start": "node scripts/serve-app.mjs",
+    "test": "node --test --test-isolation=none tests/calculator.test.mjs tests/article-validation.test.mjs tests/database.test.mjs",
+    "test:admin": "node --test --test-isolation=none tests/admin-integration.test.mjs",
+    "build:portable": "node scripts/build-in-process.mjs",
+    "test:browser": "node scripts/browser-check.mjs",
+    "test:site": "node --test --test-isolation=none tests/site.test.mjs"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.6",
+    "@astrojs/sitemap": "^3.7.0",
+    "@fontsource-variable/public-sans": "^5.2.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.2",
+    "astro": "^7.3.4",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.0",
+    "@axe-core/playwright": "^4.11.0",
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.58.0",
+    "esbuild-wasm": "^0.28.2",
+    "typescript": "^5.9.0"
+  }
+}

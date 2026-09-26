@@ -1,0 +1,23 @@
+---
+interface Props { name: string; size?: number; class?: string; }
+const {name, size = 20, class: className} = Astro.props;
+const paths: Record<string, string> = {
+  arrow: 'M4 12h15m-6-6 6 6-6 6',
+  chevron: 'm9 5 7 7-7 7',
+  search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
+  sun: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M17 12a5 5 0 1 1-10 0 5 5 0 0 1 10 0',
+  calculator: 'M6 2h12a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1ZM8 6h8v3H8zM8 13h1m6 0h1m-8 4h1m3-4h1m-1 4h1m2 0h1',
+  shield: 'M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6L12 2Zm-5 10 3 3 7-7',
+  leaf: 'M20 3S5 2 4 12c-1 8 10 12 14 4 2-4 2-13 2-13ZM3 22 15 10',
+  book: 'M12 5v16M2 3c4-1 7 0 10 2 3-2 6-3 10-2v16c-4-1-7 0-10 2-3-2-6-3-10-2V3Z',
+  home: 'm2 11 10-9 10 9M5 9v12h14V9M9 21v-7h6v7',
+  document: 'M14 2H5v20h14V7l-5-5Zm0 0v6h5M8 12h8M8 16h8',
+  coins: 'M19 8c0 3-14 3-14 0s14-3 14 0ZM5 8v5c0 3 14 3 14 0V8M5 13v5c0 3 14 3 14 0v-5',
+  check: 'm5 12 4 4L19 6',
+  menu: 'M3 6h18M3 12h18M3 18h18',
+  bolt: 'm13 2-9 12h7l-1 8L21 9h-8l0-7Z',
+  external: 'M14 3h7v7m0-7L10 14M10 3H3v18h18v-7',
+  clock: 'M12 8v5l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
+};
+---
+<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class={className}><path d={paths[name] || paths.sun}/></svg>

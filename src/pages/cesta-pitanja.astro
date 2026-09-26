@@ -1,0 +1,7 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+import { faqs } from '../data/pages';
+const schema={'@context':'https://schema.org','@type':'FAQPage',inLanguage:'hr',mainEntity:faqs.map(([name,text])=>({'@type':'Question',name,acceptedAnswer:{'@type':'Answer',text}}))};
+---
+<Layout title="Česta pitanja o solarnim panelima" description="Odgovori na česta pitanja o solarnim panelima, baterijama, nestanku struje, veličini krova i solarnom kalkulatoru." schema={schema}><div class="page-tint"><div class="container"><div class="breadcrumb"><a href="/">Naslovnica</a><Icon name="chevron" size={12}/><span>Česta pitanja</span></div><div class="page-heading"><div class="eyebrow">DOBRO JE ZNATI</div><h1>Vaša pitanja. Jasni odgovori.</h1><p>Od prvih nedoumica do praktičnih detalja o vlastitoj solarnoj elektrani.</p></div></div></div><div class="container content-section"><div class="prose-layout"><div class="faq-list">{faqs.map(([question,answer],index)=><details open={index===0}><summary>{question}</summary><p>{answer}</p></details>)}</div><aside class="info-box"><Icon name="calculator" size={30}/><h2>Zanima vas konkretna procjena?</h2><p>Unesite podatke i saznajte potencijal svojeg krova.</p><a href="/solarni-kalkulator/" class="button button-gold">Otvorite kalkulator <Icon name="arrow" size={17}/></a></aside></div></div></Layout>

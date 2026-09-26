@@ -1,0 +1,11 @@
+---
+import ContentImage from './ContentImage.astro';
+import Icon from './Icon.astro';
+import type { PortalArticle } from '../lib/server/articles';
+interface Props { article: PortalArticle; }
+const {article} = Astro.props;
+---
+<article class="article-card" data-category={article.category} data-search={`${article.title} ${article.description} ${article.category}`}>
+  <a href={`/clanci/${article.slug}/`} class="article-image" tabindex="-1" aria-hidden="true"><ContentImage image={article.image} alt=""/></a>
+  <div class="article-body"><div class="article-meta"><span class:list={['category',article.category.toLowerCase()]}>{article.category}</span><time datetime={article.date}>{article.dateLabel}</time></div><h3><a href={`/clanci/${article.slug}/`}>{article.title}</a></h3><p>{article.description}</p><a class="read-link" href={`/clanci/${article.slug}/`}>Pročitajte više <Icon name="arrow" size={17}/><span class="sr-only">: {article.title}</span></a></div>
+</article>

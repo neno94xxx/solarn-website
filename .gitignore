@@ -1,0 +1,31 @@
+# Dependencies and generated output
+node_modules/
+.npm-cache/
+dist/
+.astro/
+*.tsbuildinfo
+
+# Local credentials (keep the configuration template)
+.env
+.env.*
+!.env.example
+
+# Tests and browser downloads
+.playwright/
+test-results/
+playwright-report/
+coverage/
+.nyc_output/
+
+# Logs and local hosting state
+*.log
+.vercel/
+.netlify/
+
+# Editor and operating-system files
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

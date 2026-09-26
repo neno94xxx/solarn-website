@@ -1,0 +1,38 @@
+---
+import '@fontsource-variable/public-sans';
+import '../styles/global.css';
+import Logo from '../components/Logo.astro';
+import Icon from '../components/Icon.astro';
+interface Props { title: string; description: string; image?: string; article?: boolean; schema?: Record<string, unknown>; noindex?: boolean; }
+const {title, description, image = '/social-card.jpg', article = false, schema, noindex = false} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const nav = [['/', 'Naslovnica'], ['/solarna-energija/', 'Solarna energija'], ['/solarni-kalkulator/', 'Solarni kalkulator'], ['/poticaji/', 'Poticaji i financiranje'], ['/clanci/', 'Vodiči i članci'], ['/o-portalu/', 'O portalu']];
+const isActive = (href: string) => href === '/' ? Astro.url.pathname === '/' : Astro.url.pathname.startsWith(href);
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{title} | Solarni portal</title><meta name="description" content={description}/>
+    <meta name="theme-color" content="#163449"/><meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'}/>
+    <link rel="canonical" href={canonical}/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+    <meta property="og:type" content={article ? 'article' : 'website'}/><meta property="og:locale" content="hr_HR"/>
+    <meta property="og:site_name" content="Solarni portal"/><meta property="og:title" content={title}/><meta property="og:description" content={description}/><meta property="og:url" content={canonical}/><meta property="og:image" content={new URL(image, Astro.site)}/>
+    <meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content={title}/><meta name="twitter:description" content={description}/><meta name="twitter:image" content={new URL(image, Astro.site)}/>
+    <script type="application/ld+json" set:html={JSON.stringify(schema || {'@context':'https://schema.org','@type':'WebSite',name:'Solarni portal',url:Astro.site,inLanguage:'hr',description}).replace(/</g, '\\u003c')}/>
+  </head>
+  <body>
+    <a class="skip-link" href="#sadrzaj">Preskoči na sadržaj</a>
+    <div class="utility"><div class="container utility-inner"><span>NEOVISNI INFORMATIVNI PORTAL O SOLARNOJ ENERGIJI</span><div><a href="/pristupacnost/">Pristupačnost</a><span class="utility-divider"></span><span>Hrvatski <span aria-hidden="true">⌄</span></span></div></div></div>
+    <header class="site-header"><div class="container masthead"><Logo/><div class="masthead-right"><span>Pouzdane informacije.<br/><strong>Energija u vašim rukama.</strong></span><span class="header-sun"><Icon name="sun" size={30}/></span></div><button class="menu-button" aria-label="Otvori navigaciju" aria-expanded="false" aria-controls="main-nav"><Icon name="menu" size={26}/></button></div>
+      <div class="nav-border"><div class="container nav-inner"><nav id="main-nav" aria-label="Glavna navigacija">{nav.map(([href,label])=><a href={href} class:list={{active:isActive(href)}} aria-current={isActive(href)?'page':undefined}>{label}</a>)}</nav><details class="header-search"><summary aria-label="Pretraži portal"><Icon name="search" size={21}/></summary><form action="/clanci/" role="search"><label class="sr-only" for="header-query">Pretraži članke</label><input id="header-query" name="q" type="search" placeholder="Što vas zanima?" required/><button class="button button-navy" type="submit">Traži</button></form></details></div></div>
+    </header>
+    <main id="sadrzaj"><slot/></main>
+    <footer class="site-footer"><div class="container footer-grid"><div><Logo footer/><p>Jasne informacije za pametne odluke<br/>o sunčevoj energiji.</p><span class="independent">Neovisni portal. Nije tijelo javne vlasti.</span></div><div><h2>Istražite portal</h2><a href="/solarna-energija/">O solarnoj energiji</a><a href="/solarni-kalkulator/">Solarni kalkulator</a><a href="/poticaji/">Poticaji i financiranje</a><a href="/clanci/">Vodiči i članci</a></div><div><h2>Korisne poveznice</h2><a href="https://www.fzoeu.hr/" target="_blank" rel="noopener noreferrer">Fond za zaštitu okoliša <Icon name="external" size={13}/></a><a href="https://www.hep.hr/ods/" target="_blank" rel="noopener noreferrer">HEP ODS <Icon name="external" size={13}/></a><a href="https://joint-research-centre.ec.europa.eu/pvgis-online-tool_en" target="_blank" rel="noopener noreferrer">Europski solarni atlas · PVGIS <Icon name="external" size={13}/></a><a href="/cesta-pitanja/">Česta pitanja</a></div></div><div class="container footer-bottom"><span>© {new Date().getFullYear()}. Solarni portal</span><div><a href="/privatnost/">Privatnost</a><a href="/pristupacnost/">Pristupačnost</a><a href="#top" id="back-top">Povratak na vrh ↑</a></div></div></footer>
+    <script>
+      const button = document.querySelector<HTMLButtonElement>('.menu-button');
+      button?.addEventListener('click', () => { const expanded = button.getAttribute('aria-expanded') !== 'true'; button.setAttribute('aria-expanded', String(expanded)); document.querySelector('.nav-inner')?.classList.toggle('is-open', expanded); });
+      document.querySelector('#back-top')?.addEventListener('click', event => {event.preventDefault(); window.scrollTo({top:0, behavior:matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); document.querySelector<HTMLAnchorElement>('.brand')?.focus({preventScroll:true});});
+    </script>
+  </body>
+</html>

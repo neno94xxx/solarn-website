@@ -1,0 +1,60 @@
+import { chromium } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { mkdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+const browser = process.env.BROWSER_CDP ? await chromium.connectOverCDP(process.env.BROWSER_CDP) : await chromium.launch({channel:'chrome',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+const errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+await mkdir('test-results',{recursive:true});
+const base=process.env.TEST_URL||'http://localhost:4321';
+await page.goto(base,{waitUntil:'networkidle'});
+await page.screenshot({path:'test-results/home-desktop.png',fullPage:true});
+assert.equal(await page.locator('h1').count(),1);
+assert.equal(await page.locator('img').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true);
+const homeAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+console.log('Home accessibility:',JSON.stringify(homeAudit.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))));
+await page.getByRole('link',{name:'Izračunajte svoj solarni potencijal'}).click();
+await page.getByRole('button',{name:'Izračunajte solarni potencijal'}).click();
+await page.locator('#result-power').waitFor();
+assert.match(await page.locator('#result-power').innerText(),/4,95/);
+assert.match(await page.locator('#result-production').innerText(),/5\.?445/);
+await page.locator('#region').selectOption('dalmatia');
+await page.locator('#area').fill('5');
+await page.getByRole('button',{name:'Izračunajte solarni potencijal'}).click();
+assert.match(await page.locator('#result-power').innerText(),/0,9/);
+assert.match(await page.locator('#result-roof').innerText(),/ograničava/);
+await page.screenshot({path:'test-results/calculator-desktop.png',fullPage:true});
+const calcAudit=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+console.log('Calculator accessibility:',JSON.stringify(calcAudit.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))));
+await page.goto(`${base}/clanci/`);
+await page.getByRole('button',{name:'Poticaji',exact:true}).click();
+assert.equal(await page.locator('.article-card:visible').count(),1);
+await page.locator('#article-search').fill('nepostojeci-pojam');
+await page.locator('#empty-state').waitFor({state:'visible'});
+await page.getByRole('button',{name:'Prikaži sve članke'}).click();
+assert.equal(await page.locator('.article-card:visible').count(),4);
+await page.goto(`${base}/clanci/?q=obiteljsku`);
+assert.equal(await page.locator('.article-card:visible').count(),1);
+for(const width of [390,768,1440]){
+  await page.setViewportSize({width,height:900});
+  for(const path of ['/','/solarni-kalkulator/','/clanci/','/clanci/solarni-paneli-za-obiteljsku-kucu/','/cesta-pitanja/']){
+    await page.goto(base+path);
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+    assert.equal(overflow,false,`Overflow: ${path} at ${width}px`);
+  }
+}
+await page.setViewportSize({width:390,height:844});
+await page.goto(base);
+await page.screenshot({path:'test-results/home-mobile.png',fullPage:true});
+await page.getByRole('button',{name:'Otvori navigaciju'}).click();
+await page.locator('#main-nav').getByRole('link',{name:'Solarni kalkulator'}).click();
+await page.getByRole('button',{name:'Izračunajte solarni potencijal'}).click();
+assert.equal(await page.locator('#results-content').isVisible(),true);
+await page.screenshot({path:'test-results/calculator-mobile.png',fullPage:true});
+assert.deepEqual(errors,[]);
+assert.equal(homeAudit.violations.length,0,'Home accessibility issues');
+assert.equal(calcAudit.violations.length,0,'Calculator accessibility issues');
+console.log('Browser checks passed: calculator, filters, search, navigation, mobile overflow, accessibility.');
+await browser.close();

@@ -1,0 +1,13 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { validateArticle,slugify,referencedMedia } from '../src/lib/article-validation.mjs';
+const image='00000000-0000-4000-8000-000000000001';
+const block='00000000-0000-4000-8000-000000000002';
+const base={title:'Sunčana budućnost doma',category:'Vodiči',description:'Praktični vodič za vlastitu sunčevu elektranu.',slug:'suncana-buducnost-doma',cover_image_id:image,cover_alt:'Paneli na krovu kuće',status:'published',blocks:[{id:block,type:'text',text:'Sadržaj prvog odlomka članka.'}]};
+test('Croatian title produces readable stable slug',()=>assert.equal(slugify('Đakovo: Čista energija & sunce!'),'djakovo-cista-energija-sunce'));
+test('one title, ordered repeatable headings/text/images; extra object fields discarded',()=>{const article=validateArticle({...base,admin:true,blocks:[...base.blocks,{id:'00000000-0000-4000-8000-000000000003',type:'heading',text:'Prvi koraci'},{id:'00000000-0000-4000-8000-000000000004',type:'image',mediaId:image,alt:'Paneli na suncu',caption:'Fotografija sustava'}]});assert.deepEqual(article.blocks.map(b=>b.type),['text','heading','image']);assert.equal(article.admin,undefined);assert.deepEqual(referencedMedia(article),[image]);});
+test('published content requires cover, useful image description and text',()=>{for(const patch of [{cover_image_id:null},{cover_alt:''},{blocks:[]},{description:'a'}])assert.throws(()=>validateArticle({...base,...patch}));});
+test('draft can be saved without image or body',()=>{assert.equal(validateArticle({...base,status:'draft',cover_image_id:null,cover_alt:'',description:'',blocks:[]}).status,'draft');});
+test('title and raw HTML blocks cannot be injected into the block model',()=>{for(const type of ['title','html','script'])assert.throws(()=>validateArticle({...base,blocks:[{id:block,type,text:'Injected'}]}));});
+test('duplicate IDs, unknown media IDs, invalid status and oversized blocks rejected',()=>{for(const patch of [{blocks:[base.blocks[0],base.blocks[0]]},{cover_image_id:'https://attacker.example/x'},{status:'admin'},{slug:'../admin'},{title:'a'.repeat(181)},{blocks:Array(81).fill(base.blocks[0])}])assert.throws(()=>validateArticle({...base,...patch}));});
+test('plain text preserved for safe escaped rendering',()=>{const article=validateArticle({...base,blocks:[{id:block,type:'text',text:'<script>alert(1)</script>'}]});assert.equal(article.blocks[0].text,'<script>alert(1)</script>');});

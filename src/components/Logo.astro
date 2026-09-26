@@ -1,0 +1,7 @@
+---
+const { footer = false } = Astro.props;
+---
+<a class:list={['brand', { 'brand-footer': footer }]} href="/" aria-label="Solarni portal – naslovnica">
+  <svg class="brand-symbol" viewBox="0 0 54 58" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="2"><path d="M13 31a14 14 0 0 1 28 0M27 2v8M7 10l6 6M47 10l-6 6M0 29h8M46 29h8M10 36h34M15 43h24M20 50h14"/></g></svg>
+  <span><strong>SOLARNI PORTAL<span class="brand-dot">.</span></strong><small>Znanje za održivu budućnost</small></span>
+</a>
